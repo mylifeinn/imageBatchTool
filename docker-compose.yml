@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+  init-dirs:
+    image: busybox
+    command: >
+      sh -c "mkdir -p /root/imageBatchTool/uploads /root/imageBatchTool/processed /root/imageBatchTool/downloads &&
+             chmod -R 777 /root/imageBatchTool"
+    volumes:
+      - /root/imageBatchTool:/root/imageBatchTool
+    
+  web:
+    build: .
+    ports:
+      - "8085:5000"
+    volumes:
+      - /root/imageBatchTool/uploads:/app/uploads
+      - /root/imageBatchTool/processed:/app/processed
+      - /root/imageBatchTool/downloads:/app/downloads
+    restart: always
+    environment:
+      - FLASK_ENV=production
+    depends_on:
+      - init-dirs
