@@ -71,18 +71,18 @@ def process_images():
     if not process_type:
         return jsonify({'error': '未指定处理类型'}), 400
 
-    # 创建带日期的目录结构
+    # 创建带日期和UUID的上传目录
     date_str = datetime.now().strftime('%Y%m%d')
     session_id = str(uuid.uuid4())
     
-    # 创建永久存储目录
+    # 只在uploads目录中创建永久存储目录
     upload_dir = os.path.join(UPLOAD_FOLDER, date_str, session_id)
-    processed_dir = os.path.join(PROCESSED_FOLDER, date_str, session_id)
     os.makedirs(upload_dir, exist_ok=True)
-    os.makedirs(processed_dir, exist_ok=True)
 
     try:
-        # 保存上传的文件
+        processed_files = []  # 用于存储处理后的文件路径
+        
+        # 保存和处理文件
         for file in files:
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
@@ -90,21 +90,34 @@ def process_images():
                 upload_path = os.path.join(upload_dir, filename)
                 file.save(upload_path)
 
+                # 处理文件并直接保存到临时位置
                 if process_type == 'resize':
                     max_size = int(request.form.get('max_size', 800))
-                    output_path = os.path.join(processed_dir, filename)
+                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{filename}")
                     resize_image(upload_path, output_path, max_size)
+                    processed_files.append(output_path)
                 
                 elif process_type == 'convert':
                     new_format = request.form.get('new_format', 'jpg')
                     base_name = os.path.splitext(filename)[0]
-                    output_path = os.path.join(processed_dir, f"{base_name}.{new_format}")
+                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{base_name}.{new_format}")
                     convert_image_format(upload_path, output_path, new_format)
+                    processed_files.append(output_path)
 
         # 创建ZIP文件
         zip_filename = f"processed_{date_str}_{session_id}.zip"
         zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
-        create_zip_file(processed_dir, zip_path)
+        
+        # 修改create_zip_file的调用方式
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in processed_files:
+                filename = os.path.basename(file_path)
+                zipf.write(file_path, filename)
+
+        # 清理processed目录中的临时文件
+        for file_path in processed_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
         # 返回下载链接
         return jsonify({
@@ -113,6 +126,10 @@ def process_images():
         })
 
     except Exception as e:
+        # 发生错误时清理临时文件
+        for file_path in processed_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/download/<filename>')
