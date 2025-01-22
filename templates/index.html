@@ -74,8 +74,8 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">选择图片文件（可多选）</label>
-                        <input type="file" class="form-control" name="files[]" multiple accept="image/*" required>
+                        <label class="form-label">选择文件</label>
+                        <input type="file" class="form-control" name="files[]" multiple required>
                     </div>
 
                     <button type="submit" class="btn btn-primary">开始处理</button>
@@ -93,6 +93,12 @@
                 <!-- 添加错误信息显示区域 -->
                 <div class="mt-3" id="errorArea" style="display:none;">
                     <div class="alert alert-danger" id="errorMessage"></div>
+                </div>
+
+                <!-- 添加上传的文件名显示区域 -->
+                <div class="mt-3" id="uploadedFilesArea" style="display:none;">
+                    <h5>上传的文件：</h5>
+                    <ul id="uploadedFilesList"></ul>
                 </div>
             </div>
         </div>
@@ -119,12 +125,15 @@
             const resultArea = document.getElementById('resultArea');
             const errorArea = document.getElementById('errorArea');
             const errorMessage = document.getElementById('errorMessage');
-            const progressBar = document.querySelector('.progress-bar');
+            const uploadedFilesArea = document.getElementById('uploadedFilesArea');
+            const uploadedFilesList = document.getElementById('uploadedFilesList');
             
             progressArea.style.display = 'block';
             document.getElementById('processingText').style.display = 'block';
             resultArea.style.display = 'none';
             errorArea.style.display = 'none'; // 隐藏错误区域
+            uploadedFilesArea.style.display = 'none'; // 隐藏上传文件区域
+            uploadedFilesList.innerHTML = ''; // 清空文件列表
             
             try {
                 const response = await fetch('/process', {
@@ -142,6 +151,14 @@
                 if (result.success) {
                     document.getElementById('downloadLink').href = result.download_url;
                     resultArea.style.display = 'block';
+
+                    // 显示上传的文件名
+                    result.uploaded_filenames.forEach(filename => {
+                        const li = document.createElement('li');
+                        li.textContent = filename; // 添加文件名
+                        uploadedFilesList.appendChild(li);
+                    });
+                    uploadedFilesArea.style.display = 'block'; // 显示文件名区域
                 } else {
                     throw new Error(result.error);
                 }

@@ -84,6 +84,7 @@ def process_images():
     os.makedirs(upload_dir, exist_ok=True)
 
     processed_files = []  # 用于存储处理后的文件路径
+    uploaded_filenames = []  # 用于存储上传的文件名
     total_size = 0  # 用于计算总文件大小
 
     try:
@@ -93,6 +94,8 @@ def process_images():
                 # 检查文件扩展名
                 if not allowed_file(file.filename):
                     return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
+
+                uploaded_filenames.append(file.filename)  # 保存上传的文件名
 
                 # 检查单个文件大小
                 if file.content_length > MAX_SINGLE_FILE_SIZE:
@@ -136,10 +139,11 @@ def process_images():
             if os.path.exists(file_path):
                 os.remove(file_path)
 
-        # 返回下载链接
+        # 返回下载链接和上传的文件名
         return jsonify({
             'success': True,
-            'download_url': f'/download/{zip_filename}'
+            'download_url': f'/download/{zip_filename}',
+            'uploaded_filenames': uploaded_filenames  # 返回上传的文件名
         })
 
     except Exception as e:
