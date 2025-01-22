@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 import random
 import string
+import re
 
 app = Flask(__name__)
 
@@ -67,6 +68,9 @@ def generate_random_filename(extension):
     random_name = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
     return f"{random_name}.{extension}"
 
+def remove_chinese_characters(filename):
+    return re.sub(r'[\u4e00-\u9fa5]', '', filename)
+
 @app.route('/process', methods=['POST'])
 def process_images():
     if 'files[]' not in request.files:
@@ -76,54 +80,46 @@ def process_images():
     if not files or files[0].filename == '':
         return jsonify({'error': '没有选择文件'}), 400
 
-    # 获取处理参数
     process_type = request.form.get('process_type')
     if not process_type:
         return jsonify({'error': '未指定处理类型'}), 400
 
-    # 创建带日期和UUID的上传目录
     date_str = datetime.now().strftime('%Y%m%d')
     session_id = str(uuid.uuid4())
-    
-    # 只在uploads目录中创建永久存储目录
     upload_dir = os.path.join(UPLOAD_FOLDER, date_str, session_id)
     os.makedirs(upload_dir, exist_ok=True)
 
-    processed_files = []  # 用于存储处理后的文件路径
-    uploaded_filenames = []  # 用于存储上传的文件名
-    total_size = 0  # 用于计算总文件大小
+    processed_files = []
+    uploaded_filenames = []
+    total_size = 0
 
     try:
-        # 保存和处理文件
         for file in files:
             if file:
-                # 检查文件扩展名
                 if not allowed_file(file.filename):
                     return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
 
-                # 确保文件名不为空
-                if file.filename.strip() == '':
-                    extension = file.content_type.split('/')[-1]  # 获取文件扩展名
+                # 去掉文件名中的中文字符
+                cleaned_filename = remove_chinese_characters(file.filename)
+                
+                if cleaned_filename.strip() == '':
+                    extension = file.content_type.split('/')[-1]
                     filename = generate_random_filename(extension)
                 else:
-                    filename = secure_filename(file.filename)
+                    filename = secure_filename(cleaned_filename)
 
-                uploaded_filenames.append(filename)  # 保存上传的文件名
+                uploaded_filenames.append(filename)
 
-                # 检查单个文件大小
                 if file.content_length > MAX_SINGLE_FILE_SIZE:
                     return jsonify({'error': f'文件 {filename} 超过最大限制 {MAX_SINGLE_FILE_SIZE / (1024 * 1024)}MB'}), 400
 
                 total_size += file.content_length
-                # 检查总文件大小
                 if total_size > MAX_TOTAL_SIZE:
                     return jsonify({'error': '所有文件总大小超过最大限制 500MB'}), 400
 
-                # 保存原始文件
                 upload_path = os.path.join(upload_dir, filename)
                 file.save(upload_path)
 
-                # 处理文件并直接保存到临时位置
                 if process_type == 'resize':
                     max_size = int(request.form.get('max_size', 800))
                     output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{filename}")
@@ -137,7 +133,6 @@ def process_images():
                     convert_image_format(upload_path, output_path, new_format)
                     processed_files.append(output_path)
 
-        # 创建ZIP文件
         zip_filename = f"processed_{date_str}_{session_id}.zip"
         zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
         
@@ -146,20 +141,17 @@ def process_images():
                 filename = os.path.basename(file_path)
                 zipf.write(file_path, filename)
 
-        # 清理processed目录中的临时文件
         for file_path in processed_files:
             if os.path.exists(file_path):
                 os.remove(file_path)
 
-        # 返回下载链接和上传的文件名
         return jsonify({
             'success': True,
             'download_url': f'/download/{zip_filename}',
-            'uploaded_filenames': uploaded_filenames  # 返回上传的文件名
+            'uploaded_filenames': uploaded_filenames
         })
 
     except Exception as e:
-        # 发生错误时清理临时文件
         for file_path in processed_files:
             if os.path.exists(file_path):
                 os.remove(file_path)
