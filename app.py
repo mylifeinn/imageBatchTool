@@ -79,12 +79,15 @@ def process_images():
     upload_dir = os.path.join(UPLOAD_FOLDER, date_str, session_id)
     os.makedirs(upload_dir, exist_ok=True)
 
+    processed_files = []  # 用于存储处理后的文件路径
+
     try:
-        processed_files = []  # 用于存储处理后的文件路径
-        
         # 保存和处理文件
         for file in files:
             if file and allowed_file(file.filename):
+                if file.content_length > app.config['MAX_CONTENT_LENGTH']:
+                    return jsonify({'error': f'文件 {file.filename} 超过最大限制 10MB'}), 400
+
                 filename = secure_filename(file.filename)
                 # 保存原始文件
                 upload_path = os.path.join(upload_dir, filename)
@@ -145,4 +148,4 @@ def index():
     return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
