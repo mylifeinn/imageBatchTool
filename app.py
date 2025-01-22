@@ -6,6 +6,8 @@ import zipfile
 import uuid
 import shutil
 from datetime import datetime
+import random
+import string
 
 app = Flask(__name__)
 
@@ -61,6 +63,10 @@ def create_zip_file(source_dir, output_path):
                 arcname = os.path.relpath(file_path, source_dir)
                 zipf.write(file_path, arcname)
 
+def generate_random_filename(extension):
+    random_name = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+    return f"{random_name}.{extension}"
+
 @app.route('/process', methods=['POST'])
 def process_images():
     if 'files[]' not in request.files:
@@ -95,18 +101,24 @@ def process_images():
                 if not allowed_file(file.filename):
                     return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
 
-                uploaded_filenames.append(file.filename)  # 保存上传的文件名
+                # 确保文件名不为空
+                if file.filename.strip() == '':
+                    extension = file.content_type.split('/')[-1]  # 获取文件扩展名
+                    filename = generate_random_filename(extension)
+                else:
+                    filename = secure_filename(file.filename)
+
+                uploaded_filenames.append(filename)  # 保存上传的文件名
 
                 # 检查单个文件大小
                 if file.content_length > MAX_SINGLE_FILE_SIZE:
-                    return jsonify({'error': f'文件 {file.filename} 超过最大限制 {MAX_SINGLE_FILE_SIZE / (1024 * 1024)}MB'}), 400
+                    return jsonify({'error': f'文件 {filename} 超过最大限制 {MAX_SINGLE_FILE_SIZE / (1024 * 1024)}MB'}), 400
 
                 total_size += file.content_length
                 # 检查总文件大小
                 if total_size > MAX_TOTAL_SIZE:
                     return jsonify({'error': '所有文件总大小超过最大限制 500MB'}), 400
 
-                filename = secure_filename(file.filename)
                 # 保存原始文件
                 upload_path = os.path.join(upload_dir, filename)
                 file.save(upload_path)
