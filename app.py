@@ -103,6 +103,8 @@ def process_images():
     total_size = 0
 
     try:
+        file_counter = {}  # 用于跟踪每个文件名的计数
+
         for file in files:
             if file:
                 if not allowed_file(file.filename):
@@ -132,16 +134,31 @@ def process_images():
                 # 处理文件并直接保存到临时位置
                 if process_type == 'resize':
                     max_size = int(request.form.get('max_size', 800))
-                    # 在文件名中添加时间戳
-                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{filename.rsplit('.', 1)[0]}_{timestamp}.{filename.rsplit('.', 1)[1]}")
+                    base_name = filename.rsplit('.', 1)[0]
+                    ext = filename.rsplit('.', 1)[1]
+                    
+                    # 生成唯一文件名
+                    if base_name not in file_counter:
+                        file_counter[base_name] = 1
+                    else:
+                        file_counter[base_name] += 1
+                    
+                    output_path = os.path.join(PROCESSED_FOLDER, f"{base_name}_{timestamp}_{file_counter[base_name]}.{ext}")
                     resize_image(upload_path, output_path, max_size)
                     processed_files.append(output_path)
                 
                 elif process_type == 'convert':
                     new_format = request.form.get('new_format', 'jpg')
                     base_name = os.path.splitext(filename)[0]
-                    # 在文件名中添加时间戳
-                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{base_name}_{timestamp}.{new_format}")
+                    ext = new_format
+                    
+                    # 生成唯一文件名
+                    if base_name not in file_counter:
+                        file_counter[base_name] = 1
+                    else:
+                        file_counter[base_name] += 1
+                    
+                    output_path = os.path.join(PROCESSED_FOLDER, f"{base_name}_{timestamp}_{file_counter[base_name]}.{ext}")
                     convert_image_format(upload_path, output_path, new_format)
                     processed_files.append(output_path)
 
