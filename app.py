@@ -15,8 +15,12 @@ PROCESSED_FOLDER = '/app/processed'
 DOWNLOAD_FOLDER = '/app/downloads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'}
 
+# 从环境变量获取最大文件大小和总大小限制
+MAX_SINGLE_FILE_SIZE = int(os.environ.get('MAX_SINGLE_FILE_SIZE', 10)) * 1024 * 1024  # 默认10MB
+MAX_TOTAL_SIZE = int(os.environ.get('MAX_TOTAL_SIZE', 500)) * 1024 * 1024  # 默认500MB
+
 # 设置最大文件大小为10MB
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = MAX_TOTAL_SIZE
 
 # 确保所需目录存在
 for folder in [UPLOAD_FOLDER, PROCESSED_FOLDER, DOWNLOAD_FOLDER]:
@@ -80,13 +84,20 @@ def process_images():
     os.makedirs(upload_dir, exist_ok=True)
 
     processed_files = []  # 用于存储处理后的文件路径
+    total_size = 0  # 用于计算总文件大小
 
     try:
         # 保存和处理文件
         for file in files:
             if file and allowed_file(file.filename):
-                if file.content_length > app.config['MAX_CONTENT_LENGTH']:
-                    return jsonify({'error': f'文件 {file.filename} 超过最大限制 10MB'}), 400
+                # 检查单个文件大小
+                if file.content_length > MAX_SINGLE_FILE_SIZE:
+                    return jsonify({'error': f'文件 {file.filename} 超过最大限制 {MAX_SINGLE_FILE_SIZE / (1024 * 1024)}MB'}), 400
+
+                total_size += file.content_length
+                # 检查总文件大小
+                if total_size > MAX_TOTAL_SIZE:
+                    return jsonify({'error': '所有文件总大小超过最大限制 500MB'}), 400
 
                 filename = secure_filename(file.filename)
                 # 保存原始文件
@@ -111,7 +122,6 @@ def process_images():
         zip_filename = f"processed_{date_str}_{session_id}.zip"
         zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
         
-        # 修改create_zip_file的调用方式
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for file_path in processed_files:
                 filename = os.path.basename(file_path)

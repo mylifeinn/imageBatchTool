@@ -20,5 +20,7 @@ services:
     restart: always
     environment:
       - FLASK_ENV=production
+      - MAX_SINGLE_FILE_SIZE=10  # 单个文件最大限制为10MB
+      - MAX_TOTAL_SIZE=500        # 所有文件总大小限制为500MB
     depends_on:
       - init-dirs
