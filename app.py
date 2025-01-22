@@ -117,6 +117,9 @@ def process_images():
                     output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{base_name}.{new_format}")
                     convert_image_format(upload_path, output_path, new_format)
                     processed_files.append(output_path)
+            else:
+                # 如果文件扩展名不被允许，返回具体的文件名和扩展名
+                return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
 
         # 创建ZIP文件
         zip_filename = f"processed_{date_str}_{session_id}.zip"
