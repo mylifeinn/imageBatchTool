@@ -99,7 +99,6 @@ def process_images():
     os.makedirs(upload_dir, exist_ok=True)
 
     processed_files = []
-    uploaded_filenames = []
     total_size = 0
 
     try:
@@ -108,7 +107,6 @@ def process_images():
                 if not allowed_file(file.filename):
                     return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
 
-                # 替换文件名中的中文字符为数字
                 cleaned_filename = replace_chinese_with_numbers(file.filename)
 
                 if cleaned_filename.strip() == '':
@@ -116,8 +114,6 @@ def process_images():
                     filename = generate_random_filename(extension)
                 else:
                     filename = secure_filename(cleaned_filename)
-
-                uploaded_filenames.append(filename)
 
                 if file.content_length > MAX_SINGLE_FILE_SIZE:
                     return jsonify({'error': f'文件 {filename} 超过最大限制 {MAX_SINGLE_FILE_SIZE / (1024 * 1024)}MB'}), 400
@@ -156,8 +152,7 @@ def process_images():
 
         return jsonify({
             'success': True,
-            'download_url': f'/download/{zip_filename}',
-            'uploaded_filenames': uploaded_filenames
+            'download_url': f'/download/{zip_filename}'
         })
 
     except Exception as e:
