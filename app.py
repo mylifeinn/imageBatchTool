@@ -9,6 +9,7 @@ from datetime import datetime
 import random
 import string
 import re
+import time
 
 app = Flask(__name__)
 
@@ -125,16 +126,20 @@ def process_images():
                 upload_path = os.path.join(upload_dir, filename)
                 file.save(upload_path)
 
+                # 获取当前时间戳
+                timestamp = int(time.time())
+                
+                # 处理文件并直接保存到临时位置
                 if process_type == 'resize':
                     max_size = int(request.form.get('max_size', 800))
-                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{filename}")
+                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{filename}_{timestamp}")
                     resize_image(upload_path, output_path, max_size)
                     processed_files.append(output_path)
                 
                 elif process_type == 'convert':
                     new_format = request.form.get('new_format', 'jpg')
                     base_name = os.path.splitext(filename)[0]
-                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{base_name}.{new_format}")
+                    output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{base_name}_{timestamp}.{new_format}")
                     convert_image_format(upload_path, output_path, new_format)
                     processed_files.append(output_path)
 
