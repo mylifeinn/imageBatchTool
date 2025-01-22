@@ -68,8 +68,17 @@ def generate_random_filename(extension):
     random_name = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
     return f"{random_name}.{extension}"
 
-def remove_chinese_characters(filename):
-    return re.sub(r'[\u4e00-\u9fa5]', '', filename)
+def replace_chinese_with_numbers(filename):
+    # 用于替换中文字符的计数器
+    counter = 1
+    def replace(match):
+        nonlocal counter
+        replacement = str(counter)
+        counter += 1
+        return replacement
+
+    # 替换中文字符
+    return re.sub(r'[\u4e00-\u9fa5]', replace, filename)
 
 @app.route('/process', methods=['POST'])
 def process_images():
@@ -99,9 +108,9 @@ def process_images():
                 if not allowed_file(file.filename):
                     return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
 
-                # 去掉文件名中的中文字符
-                cleaned_filename = remove_chinese_characters(file.filename)
-                
+                # 替换文件名中的中文字符为数字
+                cleaned_filename = replace_chinese_with_numbers(file.filename)
+
                 if cleaned_filename.strip() == '':
                     extension = file.content_type.split('/')[-1]
                     filename = generate_random_filename(extension)
