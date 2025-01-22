@@ -89,7 +89,11 @@ def process_images():
     try:
         # 保存和处理文件
         for file in files:
-            if file and allowed_file(file.filename):
+            if file:
+                # 检查文件扩展名
+                if not allowed_file(file.filename):
+                    return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
+
                 # 检查单个文件大小
                 if file.content_length > MAX_SINGLE_FILE_SIZE:
                     return jsonify({'error': f'文件 {file.filename} 超过最大限制 {MAX_SINGLE_FILE_SIZE / (1024 * 1024)}MB'}), 400
@@ -117,9 +121,6 @@ def process_images():
                     output_path = os.path.join(PROCESSED_FOLDER, f"{session_id}_{base_name}.{new_format}")
                     convert_image_format(upload_path, output_path, new_format)
                     processed_files.append(output_path)
-            else:
-                # 如果文件扩展名不被允许，返回具体的文件名和扩展名
-                return jsonify({'error': f'未知文件扩展名: {file.filename}'}), 400
 
         # 创建ZIP文件
         zip_filename = f"processed_{date_str}_{session_id}.zip"
